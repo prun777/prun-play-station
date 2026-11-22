@@ -72,6 +72,9 @@
   }
   if (P.syncUIFromState) P.syncUIFromState();
   if (params.get('cinema') === '1' && P.ui && P.ui.setCinema) P.ui.setCinema(true);
+  if (!debug.shot && params.get('konbini') === '1') {
+    setTimeout(() => { if (P.konbini) P.konbini.focus(); }, 120);
+  }
 
   /* ---------------- the single update step ---------------- */
   function step(dt, t) {
