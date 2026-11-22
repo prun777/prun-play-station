@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>PRUN PLAY STATION · 1:24 Micro Diorama</title>
+<style>
+  :root{
+    --bg:#04060a;
+    --panel:rgba(9,13,19,.78);
+    --panel-2:rgba(13,18,26,.92);
+    --line:rgba(126,196,255,.14);
+    --line-soft:rgba(255,255,255,.07);
+    --text:#e8eef6;
+    --muted:#8794a5;
+    --dim:#5b6878;
+    --cyan:#5fe0ff;
+    --amber:#ffb35c;
+    --red:#ff5f6d;
+    --green:#7dffb2;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    --r:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--text);overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  #stage{position:fixed;inset:0}
+  #stage canvas{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
+  #stage canvas.dragging{cursor:grabbing}
+
+  /* ---------- top bar ---------- */
+  #topbar{
+    position:fixed;top:0;left:0;right:0;z-index:40;display:flex;align-items:flex-start;
+    justify-content:space-between;padding:18px 22px;pointer-events:none;
+    background:linear-gradient(180deg,rgba(3,5,8,.66) 0%,rgba(3,5,8,0) 100%);
+  }
+  .brand{display:flex;gap:12px;align-items:center;pointer-events:auto}
+  .brand-mark{
+    width:34px;height:34px;border:1px solid rgba(95,224,255,.55);border-radius:9px;
+    display:grid;place-items:center;position:relative;background:rgba(6,12,18,.65);
+    box-shadow:0 0 18px rgba(95,224,255,.12) inset,0 0 20px rgba(95,224,255,.08);
+  }
+  .brand-mark:before{content:"";width:10px;height:10px;background:var(--cyan);transform:rotate(45deg);border-radius:2px;box-shadow:0 0 12px var(--cyan)}
+  .brand-txt .t{font-size:15px;font-weight:600;letter-spacing:.22em}
+  .brand-txt .s{font-size:9px;letter-spacing:.3em;color:var(--muted);margin-top:3px}
+  .status{display:flex;gap:8px;align-items:center;pointer-events:auto;flex-wrap:wrap;justify-content:flex-end}
+  .chip{
+    font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--muted);
+    border:1px solid var(--line-soft);background:rgba(8,12,18,.55);border-radius:999px;
+    padding:7px 11px;display:flex;gap:7px;align-items:center;backdrop-filter:blur(8px);
+  }
+  .chip b{color:var(--text);font-weight:500}
+  .chip .dot{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+  .chip.alert .dot{background:var(--red);box-shadow:0 0 8px var(--red)}
+  #fps{min-width:64px}
+
+  /* ---------- panels ---------- */
+  .panel{
+    position:fixed;right:22px;z-index:35;width:248px;background:var(--panel);
+    border:1px solid var(--line);border-radius:var(--r);backdrop-filter:blur(18px);
+    box-shadow:0 20px 60px rgba(0,0,0,.45);overflow:hidden;transition:opacity .35s,transform .35s;
+  }
+  #p-season{top:78px}
+  #p-weather{top:336px}
+  .panel.collapsed .panel-body{max-height:0;opacity:0;padding-top:0;padding-bottom:0}
+  .panel-head{
+    display:flex;align-items:center;justify-content:space-between;padding:13px 15px;cursor:pointer;
+    user-select:none;
+  }
+  .panel-head:hover{background:rgba(255,255,255,.025)}
+  .panel-head .lbl{font-size:10px;letter-spacing:.24em;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:8px}
+  .panel-head .lbl:before{content:"";width:4px;height:4px;background:var(--cyan);border-radius:50%;box-shadow:0 0 6px var(--cyan)}
+  .chev{width:14px;height:14px;border-right:1px solid var(--dim);border-bottom:1px solid var(--dim);transform:rotate(45deg) translate(-2px,-2px);transition:transform .3s}
+  .panel.collapsed .chev{transform:rotate(-135deg) translate(-2px,-2px)}
+  .panel-body{max-height:400px;padding:0 15px 14px;transition:max-height .4s cubic-bezier(.4,0,.2,1),opacity .3s,padding .3s;overflow:hidden}
+
+  .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .seg button{
+    appearance:none;border:1px solid var(--line-soft);background:rgba(255,255,255,.02);
+    color:var(--muted);font-size:11px;padding:9px 6px;border-radius:9px;cursor:pointer;
+    transition:.2s;letter-spacing:.06em;font-family:inherit;
+  }
+  .seg button:hover{color:var(--text);border-color:rgba(126,196,255,.28);background:rgba(95,224,255,.06)}
+  .seg button.on{color:#031016;background:var(--cyan);border-color:var(--cyan);font-weight:600;box-shadow:0 0 18px rgba(95,224,255,.28)}
+  .seg button.on.amber{background:var(--amber);border-color:var(--amber);box-shadow:0 0 18px rgba(255,179,92,.25)}
+  .row{display:flex;align-items:center;justify-content:space-between;margin:12px 0 6px}
+  .row .k{font-size:10px;letter-spacing:.16em;color:var(--muted)}
+  .row .v{font-family:var(--mono);font-size:11px;color:var(--text)}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:2px;outline:none;
+    background:linear-gradient(90deg,rgba(95,224,255,.65),rgba(95,224,255,.12));
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#dff7ff;
+    border:2px solid #2b9fc4;box-shadow:0 0 10px rgba(95,224,255,.6);cursor:pointer;
+  }
+  .mini-toggle{
+    display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;user-select:none;
+  }
+  .mini-toggle .track{width:30px;height:16px;border-radius:999px;background:rgba(255,255,255,.1);position:relative;transition:.25s;border:1px solid var(--line-soft)}
+  .mini-toggle .track:after{content:"";position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--muted);transition:.25s}
+  .mini-toggle.on .track{background:rgba(95,224,255,.22);border-color:rgba(95,224,255,.5)}
+  .mini-toggle.on .track:after{left:16px;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+  .mini-toggle span{font-size:10px;letter-spacing:.12em;color:var(--muted)}
+  .mini-toggle.on span{color:var(--text)}
+
+  /* ---------- dock ---------- */
+  #dock{
+    position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:36;
+    display:flex;gap:4px;padding:6px;background:var(--panel);border:1px solid var(--line);
+    border-radius:16px;backdrop-filter:blur(18px);box-shadow:0 20px 60px rgba(0,0,0,.5);
+    transition:opacity .35s,transform .35s;
+  }
+  .dock-btn{
+    appearance:none;border:0;background:transparent;color:var(--muted);font-family:inherit;
+    padding:9px 12px;border-radius:11px;cursor:pointer;display:flex;flex-direction:column;
+    align-items:center;gap:5px;min-width:64px;transition:.2s;font-size:9px;letter-spacing:.12em;
+  }
+  .dock-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;opacity:.9}
+  .dock-btn:hover{color:var(--text);background:rgba(255,255,255,.045)}
+  .dock-btn.on{color:var(--cyan);background:rgba(95,224,255,.08)}
+  .dock-btn.alert{color:#ffb9c0}
+  .dock-btn.alert:hover{background:rgba(255,95,109,.1);color:#ffd7da}
+  .dock-btn.alert.on{color:#fff;background:rgba(255,95,109,.2);box-shadow:0 0 20px rgba(255,95,109,.25) inset}
+  .dock-sep{width:1px;margin:8px 3px;background:var(--line-soft)}
+
+  /* ---------- fullscreen ---------- */
+  #fullscreen{
+    position:fixed;right:22px;bottom:22px;z-index:36;width:42px;height:42px;border-radius:12px;
+    border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer;
+    display:grid;place-items:center;backdrop-filter:blur(14px);transition:.2s;
+  }
+  #fullscreen:hover{color:var(--cyan);border-color:rgba(95,224,255,.35)}
+  #fullscreen svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round}
+
+  /* ---------- info card ---------- */
+  #info{
+    position:fixed;left:22px;bottom:86px;z-index:37;width:308px;background:var(--panel-2);
+    border:1px solid var(--line);border-radius:var(--r);backdrop-filter:blur(20px);
+    box-shadow:0 24px 70px rgba(0,0,0,.55);padding:16px 17px 15px;
+    opacity:0;transform:translateY(10px);pointer-events:none;transition:.3s cubic-bezier(.2,.8,.2,1);
+  }
+  #info.show{opacity:1;transform:none;pointer-events:auto}
+  #info .i-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  #info .i-id{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:var(--cyan);margin-bottom:6px}
+  #info h3{margin:0;font-size:15px;font-weight:600;letter-spacing:.06em}
+  #info .i-en{font-size:9px;letter-spacing:.18em;color:var(--dim);margin-top:4px;text-transform:uppercase}
+  #info p{margin:11px 0 0;font-size:11px;line-height:1.75;color:var(--muted)}
+  #info .tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:11px}
+  #info .tag{font-size:8px;letter-spacing:.12em;color:var(--muted);border:1px solid var(--line-soft);padding:4px 7px;border-radius:5px}
+  #info .i-actions{display:flex;gap:8px;margin-top:13px}
+  #info .i-actions button{
+    flex:1;appearance:none;border:1px solid var(--line-soft);background:rgba(255,255,255,.03);
+    color:var(--muted);font-family:inherit;font-size:10px;letter-spacing:.14em;padding:8px;border-radius:8px;cursor:pointer;transition:.2s;
+  }
+  #info .i-actions button:hover{color:var(--text);border-color:rgba(95,224,255,.35);background:rgba(95,224,255,.06)}
+  #info .i-actions button.primary{color:#031016;background:var(--cyan);border-color:var(--cyan);font-weight:600}
+  #info .close{
+    appearance:none;border:0;background:transparent;color:var(--dim);font-size:16px;cursor:pointer;
+    line-height:1;padding:2px 4px;
+  }
+  #info .close:hover{color:var(--text)}
+
+  /* ---------- diagnostics ---------- */
+  #diag{
+    position:fixed;right:22px;bottom:78px;z-index:37;width:272px;background:var(--panel-2);
+    border:1px solid rgba(95,224,255,.2);border-radius:var(--r);backdrop-filter:blur(20px);
+    box-shadow:0 24px 70px rgba(0,0,0,.55);padding:14px 15px;
+    opacity:0;transform:translateY(10px);pointer-events:none;transition:.3s;
+  }
+  #diag.show{opacity:1;transform:none;pointer-events:auto}
+  #diag .d-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  #diag .d-title{font-size:9px;letter-spacing:.22em;color:var(--cyan);display:flex;gap:7px;align-items:center}
+  #diag .d-title i{width:5px;height:5px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  #diag .d-name{font-size:12px;font-weight:600;margin-bottom:2px}
+  #diag canvas{width:100%;height:52px;display:block;margin:8px 0 10px;border-radius:6px;background:rgba(0,0,0,.35);border:1px solid var(--line-soft)}
+  .d-row{display:flex;align-items:center;gap:8px;margin-top:7px;font-family:var(--mono);font-size:9px;color:var(--muted)}
+  .d-row .n{width:64px;letter-spacing:.08em}
+  .d-row .bar{flex:1;height:3px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden}
+  .d-row .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),#a5f1ff);border-radius:2px;transition:width .3s}
+  .d-row .bar i.warn{background:linear-gradient(90deg,var(--amber),#ffd8a5)}
+  .d-row .v{width:44px;text-align:right;color:var(--text)}
+  #diag .d-foot{margin-top:11px;display:flex;justify-content:space-between;font-size:8px;letter-spacing:.14em;color:var(--dim)}
+  #diag .d-foot b{color:var(--green);font-weight:500}
+
+  /* ---------- alert ---------- */
+  #alertbar{
+    position:fixed;top:18px;left:50%;transform:translateX(-50%) translateY(-70px);z-index:45;
+    display:flex;align-items:center;gap:10px;padding:9px 16px;border-radius:999px;
+    background:rgba(40,6,10,.82);border:1px solid rgba(255,95,109,.5);
+    box-shadow:0 0 30px rgba(255,95,109,.25);font-family:var(--mono);font-size:10px;
+    letter-spacing:.22em;color:#ffd7da;transition:.45s cubic-bezier(.2,.8,.2,1);white-space:nowrap;
+  }
+  #alertbar.show{transform:translateX(-50%) translateY(0)}
+  #alertbar i{width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red);animation:pulse .9s infinite}
+
+  /* ---------- cinema bars ---------- */
+  .cine-bar{position:fixed;left:0;right:0;height:0;background:#000;z-index:30;transition:height .7s cubic-bezier(.65,0,.35,1);pointer-events:none}
+  #cine-top{top:0}
+  #cine-bot{bottom:0}
+  body.cinema #cine-top,body.cinema #cine-bot{height:9vh}
+  body.cinema #topbar,body.cinema .panel,body.cinema #dock,body.cinema #info,body.cinema #diag,body.cinema #fullscreen,body.cinema #hint{opacity:0;pointer-events:none}
+  body.cinema #stage canvas{cursor:default}
+
+  /* ---------- hint ---------- */
+  #hint{
+    position:fixed;left:22px;bottom:22px;z-index:33;font-size:9px;letter-spacing:.16em;color:var(--dim);
+    display:flex;gap:14px;transition:opacity .3s;pointer-events:none;
+  }
+  #hint span b{color:var(--muted);font-weight:500}
+
+  /* ---------- loader ---------- */
+  #loader{
+    position:fixed;inset:0;z-index:100;background:#04060a;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:22px;transition:opacity .8s;
+  }
+  #loader.gone{opacity:0;pointer-events:none}
+  .load-mark{width:52px;height:52px;border:1px solid rgba(95,224,255,.5);border-radius:12px;display:grid;place-items:center;animation:float 2.4s ease-in-out infinite}
+  .load-mark:before{content:"";width:14px;height:14px;background:var(--cyan);transform:rotate(45deg);border-radius:2px;box-shadow:0 0 20px var(--cyan)}
+  @keyframes float{0%,100%{transform:translateY(-3px)}50%{transform:translateY(3px)}}
+  .load-t{font-size:11px;letter-spacing:.36em;color:var(--muted)}
+  .load-bar{width:180px;height:2px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+  .load-bar i{display:block;height:100%;width:40%;background:var(--cyan);box-shadow:0 0 12px var(--cyan);transition:width .3s}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:900px){
+    .brand-txt .s{display:none}
+    #p-season,#p-weather{width:210px;right:12px}
+    #p-season{top:70px}#p-weather{top:264px}
+    #info{width:calc(100vw - 34px);left:17px;bottom:80px}
+    #diag{width:240px;right:12px}
+    .dock-btn{min-width:52px;padding:8px}
+    .dock-btn span{display:none}
+    #hint{display:none}
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<div id="loader">
+  <div class="load-mark"></div>
+  <div class="load-t">PRUN PLAY STATION</div>
+  <div class="load-bar"><i id="loadprogress"></i></div>
+</div>
+
+<header id="topbar">
+  <div class="brand">
+    <div class="brand-mark"></div>
+    <div class="brand-txt">
+      <div class="t">PRUN PLAY STATION</div>
+      <div class="s">GAMES &amp; SERVICING · 1:24 MICRO DIORAMA</div>
+    </div>
+  </div>
+  <div class="status">
+    <div class="chip" id="chip-season"><span class="dot"></span>SEASON <b>SPRING</b></div>
+    <div class="chip" id="chip-time"><span class="dot"></span>TIME <b>14:00</b></div>
+    <div class="chip" id="chip-weather"><span class="dot"></span>WEATHER <b>CLEAR</b></div>
+    <div class="chip" id="fps">FPS <b>--</b></div>
+  </div>
+</header>
+
+<div id="alertbar"><i></i><span>ALERT · MECHANICAL SIGNATURE DETECTED</span></div>
+
+<aside class="panel" id="p-season">
+  <div class="panel-head" data-collapse="p-season">
+    <div class="lbl">SEASON &amp; TIME</div><div class="chev"></div>
+  </div>
+  <div class="panel-body">
+    <div class="seg" id="seasonSeg">
+      <button data-season="spring" class="on">春季 · 樱</button>
+      <button data-season="summer">夏季 · 晴</button>
+      <button data-season="autumn">秋季 · 枫</button>
+      <button data-season="winter">冬季 · 雪</button>
+    </div>
+    <div class="row"><div class="k">TIME OF DAY</div><div class="v" id="timeVal">14:00</div></div>
+    <input type="range" id="timeSlider" min="0" max="24" step="0.1" value="14">
+    <div class="mini-toggle" id="autoTime"><div class="track"></div><span>自动循环 · 30 秒 / 天</span></div>
+  </div>
+</aside>
+
+<aside class="panel" id="p-weather">
+  <div class="panel-head" data-collapse="p-weather">
+    <div class="lbl">WEATHER</div><div class="chev"></div>
+  </div>
+  <div class="panel-body">
+    <div class="seg" id="weatherSeg">
+      <button data-weather="clear" class="on">晴天</button>
+      <button data-weather="rain">下雨</button>
+      <button data-weather="storm">雷阵雨</button>
+      <button data-weather="fog">薄雾</button>
+    </div>
+    <div class="row"><div class="k">RAIN INTENSITY</div><div class="v" id="rainVal">0%</div></div>
+    <input type="range" id="rainSlider" min="0" max="1" step="0.01" value="0">
+  </div>
+</aside>
+
+<div id="dock">
+  <button class="dock-btn" id="btnReset" title="视角复位">
+    <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>视角复位</span>
+  </button>
+  <button class="dock-btn" id="btnRotate" title="自动旋转">
+    <svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9" ry="4"/><path d="M8 10c2-3 6-3 8 0"/><path d="M16 14c-2 3-6 3-8 0"/></svg><span>自动旋转</span>
+  </button>
+  <button class="dock-btn" id="btnCinema" title="电影模式">
+    <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 9h18M3 15h18"/></svg><span>电影模式</span>
+  </button>
+  <button class="dock-btn" id="btnAssemble" title="组装动画">
+    <svg viewBox="0 0 24 24"><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg><span>组装动画</span>
+  </button>
+  <div class="dock-sep"></div>
+  <button class="dock-btn alert" id="btnAlert" title="巨物来袭">
+    <svg viewBox="0 0 24 24"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.2v.1"/></svg><span>巨物来袭</span>
+  </button>
+</div>
+
+<button id="fullscreen" title="全屏">
+  <svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
+</button>
+
+<div id="info">
+  <div class="i-head">
+    <div>
+      <div class="i-id" id="infoId">OBJ-01</div>
+      <h3 id="infoName">对象名称</h3>
+      <div class="i-en" id="infoEn">OBJECT</div>
+    </div>
+    <button class="close" id="infoClose">×</button>
+  </div>
+  <p id="infoDesc"></p>
+  <div class="tags" id="infoTags"></div>
+  <div class="i-actions">
+    <button id="infoFocus">聚焦</button>
+    <button class="primary" id="infoOk">关闭</button>
+  </div>
+</div>
+
+<div id="diag">
+  <div class="d-head">
+    <div class="d-title"><i></i>DIAGNOSTIC LINK</div>
+    <button class="close" id="diagClose" style="appearance:none;border:0;background:transparent;color:#5b6878;font-size:15px;cursor:pointer">×</button>
+  </div>
+  <div class="d-name" id="diagName">主机检修台</div>
+  <canvas id="diagCanvas" width="480" height="104"></canvas>
+  <div class="d-row"><div class="n">CPU LOAD</div><div class="bar"><i id="barCpu"></i></div><div class="v" id="valCpu">42%</div></div>
+  <div class="d-row"><div class="n">VOLTAGE</div><div class="bar"><i id="barVolt"></i></div><div class="v" id="valVolt">12.0V</div></div>
+  <div class="d-row"><div class="n">SIGNAL</div><div class="bar"><i id="barSig"></i></div><div class="v" id="valSig">--</div></div>
+  <div class="d-row"><div class="n">THERMAL</div><div class="bar"><i id="barTemp"></i></div><div class="v" id="valTemp">48°C</div></div>
+  <div class="d-foot"><span>UNIT <b>#P-0x2F</b></span><span>LINK <b>STABLE</b></span></div>
+</div>
+
+<div id="cine-top" class="cine-bar"></div>
+<div id="cine-bot" class="cine-bar"></div>
+
+<div id="hint">
+  <span><b>拖动</b> 旋转</span><span><b>滚轮</b> 缩放</span><span><b>点击</b> 查看对象</span>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="js/core.js"></script>
+<script src="js/sky.js"></script>
+<script src="js/world.js"></script>
+<script src="js/building.js"></script>
+<script src="js/actors.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/kaiju.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
