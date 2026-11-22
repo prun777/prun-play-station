@@ -217,11 +217,13 @@
     P.box(head, 0.06, 0.1, 0.05, -0.05, 0.12, -0.1, furDark, {});
     for (let i = 0; i < 4; i++) {
       const pivot = P.group(dogG, -0.18 + (i % 2) * 0.36, 0.2, -0.11 + Math.floor(i / 2) * 0.22);
-      P.cyl(pivot, 0.035, 0.03, 0.2, 0, -0.2, 0, furDark, { seg: 5, cast: true });
+      const leg = P.cyl(pivot, 0.035, 0.03, 0.2, 0, -0.2, 0, furDark, { seg: 5, cast: true });
+      leg.userData.noMerge = true;
       dog.legs.push(pivot);
     }
     const tail = P.group(dogG, -0.28, 0.33, 0);
     const tailMesh = P.cyl(tail, 0.02, 0.035, 0.3, 0, 0.02, 0, furDark, { seg: 5, rz: 0.8 });
+    tailMesh.userData.noMerge = true;
     dog.tail = tail;
     // collar
     P.box(dogG, 0.04, 0.06, 0.26, 0.22, 0.32, 0, P.std(0xb8393f, 0.7, 0.05), {});
@@ -231,7 +233,12 @@
   /* ---------------- vehicles ---------------- */
   const vehicles = [];
   P.vehicles = vehicles;
+  P.extraMergeGroups = [];
   const wheelGeo = new T.CylinderGeometry(0.19, 0.19, 0.16, 12);
+  const wheelMat = P.std(0x17191d, 0.9, 0.05);
+  const carHeadMat = P.emissive(0xfff1d0, 0.25);
+  const carTailMat = P.emissive(0xff2b3a, 0.55);
+  const carHazMat = new T.MeshStandardMaterial({ color: 0x6a4a10, emissive: 0xffb020, emissiveIntensity: 0.05, roughness: 0.4 });
 
   function car(opts) {
     const g = P.group(S, opts.x, 0.03, opts.z, opts.name || 'car');
@@ -252,17 +259,18 @@
     for (let i = 0; i < 4; i++) {
       const wx = -L * 0.32 + (i % 2) * L * 0.64;
       const wz = -W / 2 - 0.02 + Math.floor(i / 2) * (W + 0.04);
-      const wheel = new T.Mesh(wheelGeo, P.std(0x17191d, 0.9, 0.05));
+      const wheel = new T.Mesh(wheelGeo, wheelMat);
       wheel.rotation.x = Math.PI / 2;
       wheel.position.set(wx, 0.19, wz);
       wheel.castShadow = true;
+      wheel.userData.noMerge = true;
       g.add(wheel);
       wheels.push(wheel);
     }
     // headlights / tail lights
-    const headMat = P.emissive(0xfff1d0, 0.25);
-    const tailMat = P.emissive(0xff2b3a, 0.55);
-    const hazMat = new T.MeshStandardMaterial({ color: 0x6a4a10, emissive: 0xffb020, emissiveIntensity: 0.05, roughness: 0.4 });
+    const headMat = carHeadMat;
+    const tailMat = carTailMat;
+    const hazMat = carHazMat;
     P.box(g, 0.06, 0.14, 0.2, L / 2 - 0.02, 0.3, W * 0.3, headMat, {});
     P.box(g, 0.06, 0.14, 0.2, L / 2 - 0.02, 0.3, -W * 0.3, headMat, {});
     P.box(g, 0.05, 0.12, 0.18, -L / 2 + 0.01, 0.32, W * 0.32, tailMat, {});
@@ -285,6 +293,7 @@
   const carB = car({ x: 8, z: 8.15, color: 0x8f3f46, name: 'sedanB', length: 2.1, width: 0.95, speed: 2.7, moving: true });
   carB.group.rotation.y = Math.PI;
   vehicles.push(carA, carB);
+  P.extraMergeGroups.push(carA.group, carB.group);
 
   // registered delivery van (42)
   const vanG = P.group(S, 0, 0.06, 0, 'van');
@@ -326,16 +335,17 @@
     for (let i = 0; i < 4; i++) {
       const wx = -0.95 + (i % 2) * 2.0;
       const wz = -0.67 + Math.floor(i / 2) * 1.34;
-      const wheel = new T.Mesh(wheelGeo, P.std(0x17191d, 0.9, 0.05));
+      const wheel = new T.Mesh(wheelGeo, wheelMat);
       wheel.rotation.x = Math.PI / 2;
       wheel.position.set(wx, 0.19, wz);
       wheel.castShadow = true;
+      wheel.userData.noMerge = true;
       g.add(wheel);
       wheels.push(wheel);
     }
-    const headMat = P.emissive(0xfff1d0, 0.25);
-    const tailMat = P.emissive(0xff2b3a, 0.55);
-    const hazMat = new T.MeshStandardMaterial({ color: 0x6a4a10, emissive: 0xffb020, emissiveIntensity: 0.05, roughness: 0.4 });
+    const headMat = carHeadMat;
+    const tailMat = carTailMat;
+    const hazMat = carHazMat;
     P.box(g, 0.06, 0.16, 0.22, 1.94, 0.62, 0.42, headMat, {});
     P.box(g, 0.06, 0.16, 0.22, 1.94, 0.62, -0.42, headMat, {});
     P.box(g, 0.05, 0.14, 0.2, -1.51, 0.66, 0.44, tailMat, {});
@@ -350,6 +360,9 @@
     };
   })();
   vehicles.push(van);
+  P.extraMergeGroups.push(vanG);
+
+  P.extraMergeGroups.push(dogG);
 
   /* ---------------- registry for clickable actors ---------------- */
   P.register({

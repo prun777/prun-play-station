@@ -133,10 +133,6 @@
     P.eyeBeams = P.eyeBeams || [];
     P.eyeBeams.push(beamMat);
   }
-  // low red glow under the head
-  const mechGlow = new T.PointLight(0xff2233, 0, 9, 2);
-  mechGlow.position.set(1.2, 1.4, 0);
-  mechG.add(mechGlow);
   const underGlowMat = new T.SpriteMaterial({
     map: P.glowTexture([[0, 'rgba(255,60,50,.8)'], [1, 'rgba(255,0,0,0)']]),
     color: 0xff2233, transparent: true, opacity: 0, depthWrite: false,
@@ -238,12 +234,12 @@
     matRed.emissiveIntensity = k.glow * 3.4;
     matChest.emissiveIntensity = k.glow * 1.5;
     if (P.eyeGlows) for (const gm of P.eyeGlows) gm.opacity = k.glow * 0.95;
-    if (P.eyeBeams) for (const bm of P.eyeBeams) bm.opacity = k.glow * (0.055 + P.state.rain * 0.12);
+    if (P.eyeBeams) for (const bm of P.eyeBeams) { bm.opacity = k.glow * (0.055 + P.state.rain * 0.12); bm.visible = bm.opacity > 0.005; }
     underGlowMat.opacity = k.glow * 0.55;
+    underGlow.visible = underGlowMat.opacity > 0.01;
     for (const sp of eyeSpots) {
       sp.intensity = eyePower * 1200;
     }
-    mechGlow.intensity = k.glow * 40;
 
     // tunnel warning light + strips
     if (P.tunnelLight) {

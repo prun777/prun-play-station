@@ -451,7 +451,8 @@
       p.refl.visible = reflMat.opacity > 0.02;
     }
     for (const r of ripples) {
-      if (wet < 0.05) { r.mat.opacity = 0; continue; }
+      if (wet < 0.05) { r.mat.opacity = 0; r.mesh.visible = false; continue; }
+      r.mesh.visible = true;
       r.age += dt;
       if (r.age > r.life) {
         r.age = 0;
@@ -476,26 +477,33 @@
 
     /* ---- searchlights ---- */
     const active = st.rain > 0.08 || st.weather === 'storm' || st.alert;
+    const _from = P._slFrom || (P._slFrom = new T.Vector3());
+    const _to = P._slTo || (P._slTo = new T.Vector3());
+    const _dir = P._slDir || (P._slDir = new T.Vector3());
+    const _mid = P._slMid || (P._slMid = new T.Vector3());
+    const _up = P._slUp || (P._slUp = new T.Vector3(0, 1, 0));
     for (let i = 0; i < searchlights.length; i++) {
       const sl = searchlights[i];
       sl.sweep += dt * (st.alert ? 0.35 : 0.14);
       const aimX = st.alert ? -5 : Math.sin(sl.sweep + i * 2.2) * 16;
       const aimZ = st.alert ? 9 : 10 + Math.cos(sl.sweep + i * 1.7) * 4;
-      const from = new T.Vector3(sl.x, 7.0, sl.z);
-      const to = new T.Vector3(aimX, 0.2, aimZ);
-      const dir = to.clone().sub(from).normalize();
+      const from = _from.set(sl.x, 7.0, sl.z);
+      const to = _to.set(aimX, 0.2, aimZ);
+      const dir = _dir.copy(to).sub(from).normalize();
       sl.spot.target.position.copy(to);
       sl.spot.target.updateMatrixWorld();
       sl.spot.intensity = damp(sl.spot.intensity, active ? (st.alert ? 620 : 210) * (0.4 + night * 0.6) : 0, 3);
       sl.lensMat.emissiveIntensity = damp(sl.lensMat.emissiveIntensity, active ? 2.2 : 0.2, 3);
       // orient the cone
-      const mid = from.clone().addScaledVector(dir, 8);
+      const mid = _mid.copy(from).addScaledVector(dir, 8);
       sl.cone.position.copy(mid);
-      sl.cone.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), dir.clone().multiplyScalar(-1));
+      sl.cone.quaternion.setFromUnitVectors(_up, dir.clone().multiplyScalar(-1));
       sl.core.position.copy(mid);
       sl.core.quaternion.copy(sl.cone.quaternion);
       sl.coneMat.opacity = damp(sl.coneMat.opacity, active ? (st.alert ? 0.105 : 0.055) : 0, 2.5);
       sl.coreMat.opacity = damp(sl.coreMat.opacity, active ? (st.alert ? 0.10 : 0.05) : 0, 2.5);
+      sl.cone.visible = sl.coneMat.opacity > 0.004;
+      sl.core.visible = sl.coreMat.opacity > 0.004;
     }
 
     /* ---- welder sparks ---- */
@@ -510,6 +518,7 @@
     sparkBurst = Math.max(0, sparkBurst - dt * 2.2);
     weldLight.intensity = damp(weldLight.intensity, sparkBurst * 85, 8);
     weldGlowMat.opacity = sparkBurst * 0.85;
+    weldGlow.visible = weldGlowMat.opacity > 0.01;
     {
       const pos = sparkGeo.attributes.position;
       const col = sparkGeo.attributes.color;

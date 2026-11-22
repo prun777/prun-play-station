@@ -29,6 +29,13 @@
     tote: P.std(0x2f4b6e, 0.75, 0.08),
     toteRed: P.std(0x7a3238, 0.75, 0.08),
     fabric: P.std(0x3a8f86, 0.9, 0.02),
+    accBlue: P.std(0x3f6fa8, 0.7, 0.1),
+    accRed: P.std(0x8f3f4a, 0.7, 0.1),
+    accGreen: P.std(0x3f8a6a, 0.7, 0.1),
+    accGold: P.std(0xc9a43c, 0.7, 0.1),
+    accPurple: P.std(0x6a5aa8, 0.7, 0.1),
+    accWood: P.std(0x8a6a3f, 0.7, 0.1),
+    tape: P.std(0xc9b78d, 0.8, 0.02),
     fabric2: P.std(0x3a4a5c, 0.92, 0.02),
     rug: P.std(0x39434f, 1.0, 0.0),
     rugOffice: P.std(0x33302c, 1.0, 0.0),
@@ -264,10 +271,6 @@
     P.loungeLight = new T.PointLight(0xffcf9e, 0, 10, 2);
     P.loungeLight.position.set(2.4, 5.4, -3.0);
     P.scene.add(P.loungeLight);
-    // blue monitor glow in the office
-    P.monitorGlow = new T.PointLight(0x4fb7ff, 26, 6, 2);
-    P.monitorGlow.position.set(-8.6, 4.35, -2.85);
-    P.scene.add(P.monitorGlow);
   }
 
   /* =====================  ROOFTOP SIGN (10)  ===================== */
@@ -464,7 +467,7 @@
     // shelf with spray cans
     box(toolWallG, 2.2, 0.04, 0.16, -11.35, F + 1.75, -5.3, B.wood, { cast: true });
     for (let i = 0; i < 6; i++) {
-      cyl(toolWallG, 0.045, 0.05, 0.16, -12.3 + i * 0.36, F + 1.8, -5.3, i % 2 ? B.red : P.std(0x3f6fa8, 0.6, 0.2), { seg: 8 });
+      cyl(toolWallG, 0.045, 0.05, 0.16, -12.3 + i * 0.36, F + 1.8, -5.3, i % 2 ? B.red : B.accBlue, { seg: 8 });
     }
   }
 
@@ -549,10 +552,8 @@
       box(accessG, 1.96, 0.035, 0.58, x, F + 0.5 + s * 0.55, z, B.wood, { cast: true });
       for (let i = 0; i < 5; i++) {
         const h = 0.14 + P.rand() * 0.16;
-        box(accessG, 0.22, h, 0.3, x - 0.72 + i * 0.34, F + 0.535 + s * 0.55, z, [
-          P.std(0x3f6fa8, 0.7, 0.1), P.std(0x8f3f4a, 0.7, 0.1), P.std(0x3f8a6a, 0.7, 0.1),
-          P.std(0xc9a43c, 0.7, 0.1), P.std(0x6a5aa8, 0.7, 0.1)
-        ][i % 5], { cast: true });
+        box(accessG, 0.22, h, 0.3, x - 0.72 + i * 0.34, F + 0.535 + s * 0.55, z,
+          [B.accBlue, B.accRed, B.accGreen, B.accGold, B.accPurple][i % 5], { cast: true });
       }
     }
     // cable hanks on hooks
@@ -577,9 +578,8 @@
     for (let s = 0; s < 3; s++) {
       box(caseG, 0.44, 0.03, 2.45, x, F + 0.85 + s * 0.42, z, B.wood, { cast: true });
       for (let i = 0; i < 5; i++) {
-        box(caseG, 0.18, 0.09, 0.28, x + 0.02, F + 0.89 + s * 0.42, z - 1.0 + i * 0.5, [
-          B.white, B.red, P.std(0x3f6fa8, 0.7, 0.1), B.black, P.std(0x8a6a3f, 0.7, 0.1)
-        ][i % 5], { cast: true });
+        box(caseG, 0.18, 0.09, 0.28, x + 0.02, F + 0.89 + s * 0.42, z - 1.0 + i * 0.5,
+          [B.white, B.red, B.accBlue, B.black, B.accWood][i % 5], { cast: true });
         box(caseG, 0.16, 0.06, 0.06, x + 0.02, F + 0.985 + s * 0.42, z - 0.95 + i * 0.5, B.white, {});
       }
     }
@@ -709,7 +709,7 @@
         const s = 0.7 + P.rand() * 0.25;
         box(boxesG, s, s * 0.8, s, x + P.rr(-0.05, 0.05), WF + i * s * 0.82, z, P.rand() > 0.55 ? B.crate : B.crate2, { cast: true });
         // tape stripe
-        box(boxesG, s * 1.01, 0.02, 0.1, x, WF + i * s * 0.82 + s * 0.8, z, P.std(0xc9b78d, 0.8, 0.02), { receive: false });
+        box(boxesG, s * 1.01, 0.02, 0.1, x, WF + i * s * 0.82 + s * 0.8, z, B.tape, { receive: false });
       }
     }
     // PRUN label on one box
@@ -730,7 +730,7 @@
         box(partsG, 0.5, 0.36, 0.06, 0.3 + c * 0.56, WF + 0.15 + r * 0.46, -5.88, B.frameLight, {});
         box(partsG, 0.24, 0.03, 0.02, 0.3 + c * 0.56, WF + 0.42 + r * 0.46, -5.84, B.steel, { receive: false });
         box(partsG, 0.42, 0.1, 0.004, 0.3 + c * 0.56, WF + 0.3 + r * 0.46, -5.84,
-          [P.std(0xd8b23f, 0.8, 0.02), P.std(0x8f3f4a, 0.8, 0.02), P.std(0x3f8a6a, 0.8, 0.02)][c % 3], { receive: false });
+          [B.accGold, B.accRed, B.accGreen][c % 3], { receive: false });
       }
     }
     // bin on top with cables
@@ -753,7 +753,7 @@
     box(awaitG, 2.4, 0.1, 1.5, cx, WF, cz, B.woodDark, { receive: true });
     for (let i = 0; i < 3; i++) {
       const x = cx - 0.75 + i * 0.75;
-      box(awaitG, 0.5, 0.09, 0.34, x, WF + 0.12, cz, [B.white, B.black, P.std(0x2a6a4a, 0.8, 0.1)][i], { cast: true });
+      box(awaitG, 0.5, 0.09, 0.34, x, WF + 0.12, cz, [B.white, B.black, B.accGreen][i], { cast: true });
       box(awaitG, 0.44, 0.02, 0.28, x, WF + 0.2, cz, B.darkSteel, {});
       // service tag
       box(awaitG, 0.14, 0.09, 0.005, x + 0.18, WF + 0.24, cz + 0.19, P.std(0xd8b23f, 0.8, 0.02), { receive: false });
@@ -1209,7 +1209,6 @@
     P.wareLight.intensity += ((86 * interior + 66) - P.wareLight.intensity) * Math.min(1, dt * 2);
     P.officeLight.intensity += ((night * 62 + 55) - P.officeLight.intensity) * Math.min(1, dt * 2);
     P.loungeLight.intensity += ((night * 78 + 64) - P.loungeLight.intensity) * Math.min(1, dt * 2);
-    P.monitorGlow.intensity += (((night * 16 + 22) + Math.sin(t * 0.8) * 1.2) - P.monitorGlow.intensity) * Math.min(1, dt * 2);
 
     P.ceilingGlow[0].emissiveIntensity += ((0.42 + night * 0.5) - P.ceilingGlow[0].emissiveIntensity) * Math.min(1, dt * 4);
 

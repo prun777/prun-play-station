@@ -193,6 +193,8 @@
   const raycaster = new T.Raycaster();
   const pointer = new T.Vector2(-10, -10);
   let pointerInside = false;
+  let pointerMoved = true;
+  const lastCamPos = new T.Vector3(1e9, 1e9, 1e9);
   let hoverId = null, selectedId = null;
   const canvas = P.renderer.domElement;
 
@@ -200,6 +202,7 @@
     pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
     pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
     pointerInside = true;
+    pointerMoved = true;
   });
   canvas.addEventListener('pointerleave', () => { pointerInside = false; setHover(null); });
 
@@ -256,10 +259,14 @@
 
   P.onUpdate(function hoverTick() {
     if (P.state.cinema || P.isDragging() || !pointerInside) { if (!selectedId) outline.visible = false; return; }
-    // throttle raycasts to ~12 Hz using frame time
+    // throttle raycasts to ~8 Hz and only run when the pointer or camera moved
     hoverTick.acc = (hoverTick.acc || 0) + P.clock.dt;
-    if (hoverTick.acc < 0.09) return;
+    if (hoverTick.acc < 0.12) return;
+    const camMoved = lastCamPos.distanceToSquared(P.camera.position) > 0.0004;
+    if (!pointerMoved && !camMoved) { hoverTick.acc = 0; return; }
     hoverTick.acc = 0;
+    pointerMoved = false;
+    lastCamPos.copy(P.camera.position);
     raycaster.setFromCamera({ x: pointer.x, y: pointer.y }, P.camera);
     const hits = raycaster.intersectObjects(P.pickables, false);
     if (!hits.length) { setHover(null); return; }

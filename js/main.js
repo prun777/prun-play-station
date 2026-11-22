@@ -25,7 +25,8 @@
   };
   P.debug = debug;
 
-  /* finish registry (needs every object registered) */
+  /* batch static meshes first, then build the pick list */
+  if (P.mergeStaticScene) P.mergeStaticScene();
   P.finalizeRegistry();
   if (P.ui && P.ui.setWeather) { /* keep initial UI in sync */ }
 
@@ -147,19 +148,48 @@
         }
       } catch (e) { /* compileAsync is an optimisation only */ }
       firstFrame();
+      P.renderer.shadowMap.autoUpdate = false;
+      P.renderer.shadowMap.needsUpdate = true;
       P.renderer.setAnimationLoop(animate);
     }
 
-    function animate() {
+    // --- performance governor: keep the frame budget under ~16 ms ---
+  let perfWindow = 0, perfFrames = 0, perfCooldown = 0, shadowClock = 0;
+  let shadowEvery = 0;
+  function govern(rawDt) {
+    if (rawDt > 0.25) return;                 // tab switch / debugger pause
+    perfWindow += rawDt; perfFrames++;
+    perfCooldown = Math.max(0, perfCooldown - rawDt);
+    shadowClock += rawDt;
+    if (shadowClock > 0.12) {
+      shadowClock = 0;
+      P.renderer.shadowMap.needsUpdate = true;
+    }
+    if (perfWindow < 2) return;
+    const avg = perfWindow / perfFrames;
+    const cur = P.renderer.getPixelRatio();
+    const cap = Math.min(window.devicePixelRatio || 1, 1.75);
+    if (avg > 0.0175 && cur > 1.0 && perfCooldown <= 0) {
+      P.renderer.setPixelRatio(Math.max(1.0, +(cur - 0.25).toFixed(2)));
+      perfCooldown = 2.0;
+    } else if (avg < 0.0135 && cur < cap - 0.01 && perfCooldown <= 0) {
+      P.renderer.setPixelRatio(Math.min(cap, +(cur + 0.25).toFixed(2)));
+      perfCooldown = 3.0;
+    }
+    perfWindow = 0; perfFrames = 0;
+  }
+
+  function animate() {
       const now = performance.now();
-      let dt = (now - last) / 1000;
+      const rawDt = (now - last) / 1000;
       last = now;
-      if (!isFinite(dt) || dt < 0) dt = 0.016;
-      dt = Math.min(dt, 1 / 20); // clamp after tab switches
+      let dt = isFinite(rawDt) && rawDt > 0 ? rawDt : 0.016;
+      dt = Math.min(dt, 1 / 20); // clamp simulation after tab switches
       elapsed += dt;
       step(dt, elapsed);
       P.renderer.render(P.scene, P.camera);
-      if (P.reportFrame) P.reportFrame(dt);
+      govern(rawDt);
+      if (P.reportFrame) P.reportFrame(rawDt);
       if (!started) { started = true; hideLoader(); window.__ready = true; }
     }
     // Let the loader paint before the heavy build starts

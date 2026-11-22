@@ -169,7 +169,7 @@
   const sun = new T.DirectionalLight(0xfff0ea, 2.6);
   sun.position.set(26, 34, 20);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(1024, 1024);
   const sc = sun.shadow.camera;
   sc.left = -30; sc.right = 30; sc.top = 30; sc.bottom = -30;
   sc.near = 1; sc.far = 120;
@@ -206,7 +206,9 @@
   /* ---------------- day / night update ---------------- */
   const cZen = new T.Color(), cHor = new T.Color(), cSun = new T.Color();
   const cNightZen = new T.Color(), cNightHor = new T.Color();
-  const sunDir = new T.Vector3();
+  const cDusk = new T.Color(), cHemiGround = new T.Color(), cStorm = new T.Color(0x5d6b7a);
+  const sunDir = new T.Vector3(), camDir = new T.Vector3(), moonDir = new T.Vector3();
+  const fogColorTarget = new T.Color();
   const smoothstep = (a, b, x) => { const t = P.clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
   P.updateSky = function (dt) {
@@ -235,8 +237,9 @@
     const dim = 1 - rain * 0.30 - storm * 0.10 - fogW * 0.12;
 
     // day colors
-    cZen.setHex(pal.zenith).lerp(new T.Color(pal.dusk), dusk * 0.35);
-    cHor.setHex(pal.horizon).lerp(new T.Color(pal.dusk), dusk * 0.72);
+    cDusk.setHex(pal.dusk);
+    cZen.setHex(pal.zenith).lerp(cDusk, dusk * 0.35);
+    cHor.setHex(pal.horizon).lerp(cDusk, dusk * 0.72);
     // night colors
     cNightZen.setHex(pal.nightZenith);
     cNightHor.setHex(pal.nightHorizon);
@@ -245,9 +248,8 @@
     cHor.lerp(cNightHor, night).multiplyScalar(dim);
     // overcast: pull the sky toward cold grey when it rains or fogs
     const murk = Math.min(1, rain * 0.8 + fogW * 0.5);
-    const stormCol = new T.Color(0x5d6b7a);
-    cZen.lerp(stormCol, murk * 0.62);
-    cHor.lerp(stormCol, murk * 0.52);
+    cZen.lerp(cStorm, murk * 0.62);
+    cHor.lerp(cStorm, murk * 0.52);
 
     // smooth the sky
     const k = 1 - Math.exp(-dt * 6);
@@ -256,12 +258,11 @@
     uniforms.uSunDir.value.copy(sunDir);
     uniforms.uNight.value += (night - uniforms.uNight.value) * k;
     uniforms.uFlash.value += ((P.flash || 0) - uniforms.uFlash.value) * Math.min(1, dt * 18);
-    const camDir = new T.Vector3();
     P.camera.getWorldDirection(camDir);
     uniforms.uCamY.value += (camDir.y - uniforms.uCamY.value) * Math.min(1, dt * 8);
 
     // sun color + intensity
-    cSun.setHex(pal.sun).lerp(new T.Color(pal.sunDusk), dusk * 0.85);
+    cSun.setHex(pal.sun).lerp(cDusk.setHex(pal.sunDusk), dusk * 0.85);
     sun.color.lerp(cSun, k);
     const sunPower = pal.sunIntensity * 1.16 * day * (0.55 + 0.45 * Math.max(elev, 0)) * (1 - rain * 0.55 - storm * 0.15) * (1 - fogW * 0.35);
     sun.intensity += (sunPower - sun.intensity) * k;
@@ -269,7 +270,7 @@
 
     // hemisphere + ambient
     hemi.color.lerp(cHor, k);
-    hemi.groundColor.lerp(new T.Color(pal.hemiGround), k);
+    hemi.groundColor.lerp(cHemiGround.setHex(pal.hemiGround), k);
     const hemiPower = (0.45 + 1.05 * day) * (1 - rain * 0.30 - storm * 0.08);
     hemi.intensity += (hemiPower - hemi.intensity) * k;
     ambient.intensity += (((0.09 + 0.14 * day)) - ambient.intensity) * k;
@@ -281,7 +282,7 @@
     // moon
     moonLight.position.set(-sx * 0.8, Math.max(-sy, 10) + 18, -20);
     moonLight.intensity += ((0.30 * night) - moonLight.intensity) * k;
-    const moonDir = new T.Vector3(-sx * 0.8, Math.max(-sy, 10) + 18, -20).normalize();
+    moonDir.set(-sx * 0.8, Math.max(-sy, 10) + 18, -20).normalize();
     moon.position.copy(moonDir.multiplyScalar(230));
     moonGlow.position.copy(moon.position);
     moonMat.opacity += ((night * 0.95) - moonMat.opacity) * k;
@@ -292,7 +293,7 @@
     starMat.opacity += (starOp - starMat.opacity) * k;
 
     // fog — color follows the horizon, density follows weather
-    const fogColorTarget = cHor.clone().multiplyScalar(0.72 + day * 0.2);
+    fogColorTarget.copy(cHor).multiplyScalar(0.72 + day * 0.2);
     P.scene.fog.color.lerp(fogColorTarget, k);
     const density = 0.0026 + rain * 0.0032 + storm * 0.0018 + fogW * 0.010 + night * 0.0008;
     P.scene.fog.density += (density - P.scene.fog.density) * k;

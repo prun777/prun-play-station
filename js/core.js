@@ -43,7 +43,7 @@
       '无法创建 WebGL 上下文。<br>请使用支持 WebGL2 的浏览器，并开启硬件加速。</div>';
     throw e;
   }
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = T.PCFSoftShadowMap;
@@ -64,7 +64,7 @@
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   });
 
   /* ---------------- orbit controls (self contained) ---------------- */
@@ -209,19 +209,32 @@
     return matCache.get(key);
   };
 
+  const stdCache = new Map();
   P.std = function (color, roughness, metalness, extra) {
-    return new T.MeshStandardMaterial(Object.assign({
-      color: color,
-      roughness: roughness === undefined ? 0.78 : roughness,
-      metalness: metalness === undefined ? 0.04 : metalness,
-      flatShading: false
-    }, extra || {}));
+    const r = roughness === undefined ? 0.78 : roughness;
+    const m = metalness === undefined ? 0.04 : metalness;
+    const key = 's|' + color + '|' + r + '|' + m + '|' + (extra ? JSON.stringify(extra) : '');
+    let mat = stdCache.get(key);
+    if (!mat) {
+      mat = new T.MeshStandardMaterial(Object.assign({
+        color: color, roughness: r, metalness: m, flatShading: false
+      }, extra || {}));
+      stdCache.set(key, mat);
+    }
+    return mat;
   };
+  const flatCache = new Map();
   P.flat = function (color, roughness, extra) {
-    return new T.MeshStandardMaterial(Object.assign({
-      color: color, roughness: roughness === undefined ? 0.9 : roughness,
-      metalness: 0.02, flatShading: true
-    }, extra || {}));
+    const r = roughness === undefined ? 0.9 : roughness;
+    const key = 'f|' + color + '|' + r + '|' + (extra ? JSON.stringify(extra) : '');
+    let mat = flatCache.get(key);
+    if (!mat) {
+      mat = new T.MeshStandardMaterial(Object.assign({
+        color: color, roughness: r, metalness: 0.02, flatShading: true
+      }, extra || {}));
+      flatCache.set(key, mat);
+    }
+    return mat;
   };
   P.emissive = function (color, intensity, extra) {
     return new T.MeshStandardMaterial(Object.assign({

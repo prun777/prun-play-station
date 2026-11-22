@@ -61,7 +61,7 @@
   /* ---------- panels ---------- */
   .panel{
     position:fixed;right:22px;z-index:35;width:248px;background:var(--panel);
-    border:1px solid var(--line);border-radius:var(--r);backdrop-filter:blur(18px);
+    border:1px solid var(--line);border-radius:var(--r);backdrop-filter:blur(10px);
     box-shadow:0 20px 60px rgba(0,0,0,.45);overflow:hidden;transition:opacity .35s,transform .35s;
   }
   #p-season{top:78px}
@@ -112,7 +112,7 @@
   #dock{
     position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:36;
     display:flex;gap:4px;padding:6px;background:var(--panel);border:1px solid var(--line);
-    border-radius:16px;backdrop-filter:blur(18px);box-shadow:0 20px 60px rgba(0,0,0,.5);
+    border-radius:16px;backdrop-filter:blur(10px);box-shadow:0 20px 60px rgba(0,0,0,.5);
     transition:opacity .35s,transform .35s;
   }
   .dock-btn{
@@ -132,7 +132,7 @@
   #fullscreen{
     position:fixed;right:22px;bottom:22px;z-index:36;width:42px;height:42px;border-radius:12px;
     border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer;
-    display:grid;place-items:center;backdrop-filter:blur(14px);transition:.2s;
+    display:grid;place-items:center;backdrop-filter:blur(8px);transition:.2s;
   }
   #fullscreen:hover{color:var(--cyan);border-color:rgba(95,224,255,.35)}
   #fullscreen svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round}
@@ -140,7 +140,7 @@
   /* ---------- info card ---------- */
   #info{
     position:fixed;left:22px;bottom:86px;z-index:37;width:308px;background:var(--panel-2);
-    border:1px solid var(--line);border-radius:var(--r);backdrop-filter:blur(20px);
+    border:1px solid var(--line);border-radius:var(--r);backdrop-filter:blur(12px);
     box-shadow:0 24px 70px rgba(0,0,0,.55);padding:16px 17px 15px;
     opacity:0;transform:translateY(10px);pointer-events:none;transition:.3s cubic-bezier(.2,.8,.2,1);
   }
@@ -168,7 +168,7 @@
   /* ---------- diagnostics ---------- */
   #diag{
     position:fixed;right:22px;bottom:78px;z-index:37;width:272px;background:var(--panel-2);
-    border:1px solid rgba(95,224,255,.2);border-radius:var(--r);backdrop-filter:blur(20px);
+    border:1px solid rgba(95,224,255,.2);border-radius:var(--r);backdrop-filter:blur(12px);
     box-shadow:0 24px 70px rgba(0,0,0,.55);padding:14px 15px;
     opacity:0;transform:translateY(10px);pointer-events:none;transition:.3s;
   }
@@ -370,6 +370,7 @@
 <script src="js/effects.js"></script>
 <script src="js/kaiju.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/optimize.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

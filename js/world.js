@@ -34,7 +34,8 @@
     rockHill: P.flat(0x595552, 0.96),
     rockHill2: P.flat(0x6a645e, 0.96),
     tunnelDark: new T.MeshStandardMaterial({ color: 0x0b0c0e, roughness: 1, metalness: 0 }),
-    caution: P.std(0xc9a43c, 0.7, 0.05)
+    caution: P.std(0xc9a43c, 0.7, 0.05),
+    shrub: P.flat(0x4c6b45, 0.9)
   };
   P.worldMats = M;
 
@@ -68,6 +69,7 @@
     const water = new T.Mesh(geo, M.sea);
     water.position.set(0, 0.07, -11.4);
     water.receiveShadow = true;
+    water.userData.noMerge = true;
     seaG.add(water);
     P.seaMesh = water;
     P.seaBase = Float32Array.from(geo.attributes.position.array);
@@ -94,7 +96,8 @@
 
   /* =====================  PALMS  ===================== */
   const palmsG = P.group(S, 0, 0, 0, 'palms');
-  const palmLeaves = [];
+  const palmFronds = [];          // specs for the single instanced frond mesh
+  const FROND_YAW = Math.PI * 2 / 8;
   function makePalm(x, z, scale, lean) {
     const g = P.group(palmsG, x, 0.02, z);
     g.scale.setScalar(scale);
@@ -106,18 +109,18 @@
       px += Math.sin(lean * 0.1) * 0.09 + lean * 0.012;
       py += h * 0.98;
     }
-    const crown = P.group(g, px, py, 0);
+    g.updateMatrixWorld(true);
+    const palmMatrix = g.matrixWorld.clone();
     for (let i = 0; i < 8; i++) {
-      const pivot = P.group(crown, 0, 0, 0);
-      pivot.rotation.y = (i / 8) * Math.PI * 2 + P.rr(-0.15, 0.15);
-      const geo = new T.ConeGeometry(0.34, 2.9, 5, 1, true);
-      geo.translate(0, 1.45, 0);
-      const frond = new T.Mesh(geo, M.palmLeaf);
-      frond.rotation.z = -(Math.PI / 2 - 0.42 - P.rand() * 0.18);
-      frond.castShadow = true;
-      pivot.add(frond);
-      palmLeaves.push({ mesh: frond, baseZ: frond.rotation.z, phase: P.rand() * 6.28 });
+      palmFronds.push({
+        palm: palmMatrix,
+        crown: new T.Vector3(px, py, 0),
+        yaw: (i / 8) * Math.PI * 2 + P.rr(-0.15, 0.15),
+        tilt: -(Math.PI / 2 - 0.42 - P.rand() * 0.18),
+        phase: P.rand() * 6.28
+      });
     }
+    const crown = P.group(g, px, py, 0);
     for (let i = 0; i < 3; i++) {
       P.ico(crown, 0.12, Math.cos(i * 2.1) * 0.18, -0.05, Math.sin(i * 2.1) * 0.18, M.palmTrunk);
     }
@@ -127,6 +130,40 @@
     [-2.2, -8.0, 0.88, -1.1], [2.4, -8.12, 1.04, 0.8], [7.0, -7.98, 0.94, -0.4],
     [11.4, -8.1, 1.0, 1.2], [15.8, -7.95, 0.86, -0.9]
   ].forEach(([x, z, s, lean]) => makePalm(x, z, s, lean));
+
+  // all 64 fronds in a single instanced draw call
+  const frondGeo = new T.ConeGeometry(0.34, 2.9, 5, 1, true);
+  frondGeo.translate(0, 1.45, 0);
+  const frondMesh = new T.InstancedMesh(frondGeo, M.palmLeaf, palmFronds.length);
+  frondMesh.castShadow = true;
+  frondMesh.receiveShadow = false;
+  frondMesh.frustumCulled = false;
+  palmsG.add(frondMesh);
+  P.frondMesh = frondMesh;
+  const frondDummy = new T.Object3D();
+  const frondMat4 = new T.Matrix4();
+  const frondTmp = new T.Matrix4();
+  function updateFronds(t) {
+    const windAmp = 0.6 + (P.wind ? P.wind.value : 0);
+    for (let i = 0; i < palmFronds.length; i++) {
+      const f = palmFronds[i];
+      const swayZ = Math.sin(t * 1.4 + f.phase) * 0.035 * windAmp;
+      const swayX = Math.sin(t * 1.1 + f.phase * 1.3) * 0.02 * (P.wind ? P.wind.value : 0);
+      frondMat4.copy(f.palm);
+      frondTmp.makeTranslation(f.crown.x, f.crown.y, f.crown.z);
+      frondMat4.multiply(frondTmp);
+      frondTmp.makeRotationY(f.yaw);
+      frondMat4.multiply(frondTmp);
+      frondTmp.makeRotationZ(f.tilt + swayZ);
+      frondMat4.multiply(frondTmp);
+      frondTmp.makeRotationX(swayX);
+      frondMat4.multiply(frondTmp);
+      frondMesh.setMatrixAt(i, frondMat4);
+    }
+    frondMesh.instanceMatrix.needsUpdate = true;
+  }
+  updateFronds(0);
+  frondMesh.computeBoundingSphere();
 
   // flowering broadleaf trees (spring sakura / summer green / autumn orange / winter bare)
   function makeBroadleaf(x, z, scale, hue) {
@@ -187,7 +224,7 @@
       P.box(forecourtG, w, 0.5, d, x, 0.05, z, M.concreteDark, { cast: true });
       P.box(forecourtG, w - 0.16, 0.05, d - 0.16, x, 0.55, z, M.earth, { receive: false });
       for (let i = 0; i < 3; i++) {
-        P.ico(forecourtG, P.rr(0.22, 0.34), x + P.rr(-w / 3, w / 3), 0.72, z + P.rr(-d / 3, d / 3), P.flat(0x4c6b45, 0.9), { cast: true });
+        P.ico(forecourtG, P.rr(0.22, 0.34), x + P.rr(-w / 3, w / 3), 0.72, z + P.rr(-d / 3, d / 3), M.shrub, { cast: true });
       }
     }
     planter(-13.9, 4.4, 1.5, 1.0);
@@ -245,22 +282,17 @@
   const lampHeads = [];
   P.lampLights = [];
   P.lampPools = [];
+  const lampHeadMat = new T.MeshStandardMaterial({
+    color: 0x2a2f36, emissive: 0xffc98a, emissiveIntensity: 0.0, roughness: 0.5, metalness: 0.45
+  });
   [-14.2, -7.6, 0.8, 8.6].forEach((x, i) => {
     const z = 6.95;
     P.cyl(lampsG, 0.07, 0.09, 4.6, x, 0.14, z, M.darkSteel, { seg: 8, cast: true });
     P.box(lampsG, 0.08, 0.08, 1.1, x, 4.5, z + 0.5, M.darkSteel, { cast: true });
-    const headMat = new T.MeshStandardMaterial({
-      color: 0x2a2f36, emissive: 0xffc98a, emissiveIntensity: 0.0, roughness: 0.5, metalness: 0.45
-    });
+    const headMat = lampHeadMat;
     P.box(lampsG, 0.34, 0.12, 0.62, x, 4.4, z + 1.05, headMat, { cast: false });
     P.lampPools.push(P.lightPool(lampsG, x, z + 1.05, 2.6, 0xffc07a, 0.0, 0.158));
     lampHeads.push({ mat: headMat });
-    if (i === 1 || i === 2) {
-      const pl = new T.PointLight(0xffc27a, 0, 11, 2);
-      pl.position.set(x, 4.25, z + 1.05);
-      lampsG.add(pl);
-      P.lampLights.push(pl);
-    }
   });
   P.lampHeads = lampHeads;
 
@@ -430,23 +462,24 @@
     wind.value += (windTarget - wind.value) * Math.min(1, dt * 1.5);
 
     if (P.seaMesh) {
-      const pos = P.seaMesh.geometry.attributes.position;
-      const base = P.seaBase;
-      const amp = 0.055 + wind.value * 0.035;
-      for (let i = 0; i < pos.count; i++) {
-        const x = base[i * 3], z = base[i * 3 + 2];
-        pos.array[i * 3 + 1] = Math.sin(x * 0.55 + t * 0.9 + z * 0.8) * amp + Math.sin(x * 1.7 - t * 0.55) * amp * 0.35;
+      // the sea is flat-shaded: vertex normals are not needed, and 30 Hz is plenty
+      P.seaClock = (P.seaClock || 0) + dt;
+      if (P.seaClock > 1 / 30) {
+        P.seaClock = 0;
+        const pos = P.seaMesh.geometry.attributes.position;
+        const base = P.seaBase;
+        const amp = 0.055 + wind.value * 0.035;
+        for (let i = 0; i < pos.count; i++) {
+          const x = base[i * 3], z = base[i * 3 + 2];
+          pos.array[i * 3 + 1] = Math.sin(x * 0.55 + t * 0.9 + z * 0.8) * amp + Math.sin(x * 1.7 - t * 0.55) * amp * 0.35;
+        }
+        pos.needsUpdate = true;
       }
-      pos.needsUpdate = true;
-      P.seaMesh.geometry.computeVertexNormals();
     }
     for (const f of P.foam) {
       f.mat.opacity = 0.18 + Math.sin(t * 0.9 + f.phase) * 0.1 + wind.value * 0.06;
     }
-    for (const f of palmLeaves) {
-      f.mesh.rotation.z = f.baseZ + Math.sin(t * 1.4 + f.phase) * 0.035 * (0.6 + wind.value);
-      f.mesh.rotation.x = Math.sin(t * 1.1 + f.phase * 1.3) * 0.02 * wind.value;
-    }
+    if (P.frondMesh) updateFronds(t);
 
     const lampI = night * 1.0 + st.rain * 0.2;
     for (const h of P.lampHeads) {
@@ -461,9 +494,11 @@
     }
     if (P.vendingPool) {
       P.vendingPool.material.opacity += ((night * 0.28) - P.vendingPool.material.opacity) * Math.min(1, dt * 3);
+      P.vendingPool.visible = P.vendingPool.material.opacity > 0.01;
     }
     for (const pool of P.lampPools) {
       pool.material.opacity += ((night * 0.2 + st.rain * 0.05) - pool.material.opacity) * Math.min(1, dt * 2.4);
+      pool.visible = pool.material.opacity > 0.01;
     }
 
     const snowTarget = st.season === 'winter' ? 0.82 : 0;
